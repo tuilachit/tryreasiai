@@ -33,6 +33,14 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Explicit env ignores (safety)
+.env
+.env.local
+.env.*.local
+experiments/*/.env
+experiments/*/node_modules
+experiments/*/report.md
+
 # vercel
 .vercel
 

@@ -131,3 +131,26 @@
       "Noto Color Emoji";
   }
 }
+
+@keyframes reasi-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.reasi-dot {
+  animation: reasi-dot-pulse 1.2s ease-in-out infinite;
+}
+.reasi-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+.reasi-dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.reasi-dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
