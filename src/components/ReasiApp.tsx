@@ -50,8 +50,7 @@ type HistoryPayload = {
   isEditingProfile: boolean;
 };
 
-const DEFAULT_WEEKLY =
-  "Planning meals for next week, something fresh and not too heavy";
+const DEFAULT_WEEKLY = "";
 
 function nearestBudgetAud(target: number): number {
   let best: number = BUDGET_OPTIONS[0]!.aud;
