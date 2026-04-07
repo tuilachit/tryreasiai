@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, ChevronRight, X } from "lucide-react";
 
+import { RecipeSheet } from "@/components/RecipeSheet";
 import { Button } from "@/components/ui/button";
 import type { MealSlot } from "@/lib/ai/schemas";
 import { dayShortLabel } from "@/lib/mealWeekday";
@@ -90,6 +91,9 @@ export function MealReviewScreen({
   onStartOver,
   onConfirmBuild,
 }: MealReviewScreenProps) {
+  const [selectedMealIndex, setSelectedMealIndex] = useState<number | null>(
+    null,
+  );
   const total = mealTotalAud(meals);
   const canRemove = meals.length > 1;
   const showAdd = meals.length < 25;
@@ -126,35 +130,61 @@ export function MealReviewScreen({
           return (
             <div
               key={index}
-              className="relative rounded-xl border border-neutral-200 p-4 sm:p-5"
+              tabIndex={0}
+              role="group"
+              aria-label={`${meal.dishName}, tap card for details`}
+              onClick={() => setSelectedMealIndex(index)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelectedMealIndex(index);
+                }
+              }}
+              className="relative cursor-pointer rounded-xl border border-neutral-200 p-4 transition-colors active:bg-neutral-50 sm:p-5"
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-wider text-neutral-500">
                   {dayShortLabel(meal.day)}
                 </span>
-                <button
-                  type="button"
-                  aria-label="Remove meal"
-                  disabled={!canRemove}
-                  onClick={() => onRemove(index)}
-                  className={cn(
-                    "-mr-1 -mt-1 flex size-8 items-center justify-center rounded-lg",
-                    canRemove
-                      ? "text-neutral-600 active:bg-neutral-100"
-                      : "cursor-not-allowed opacity-30",
-                  )}
-                >
-                  <X className="size-5" strokeWidth={1.75} />
-                </button>
+                <div className="flex shrink-0 items-center gap-0.5">
+                  <ChevronRight
+                    className="size-4 text-neutral-300"
+                    strokeWidth={2}
+                    aria-hidden
+                  />
+                  <button
+                    type="button"
+                    aria-label="Remove meal"
+                    disabled={!canRemove}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(index);
+                    }}
+                    className={cn(
+                      "-mr-1 -mt-1 flex size-8 items-center justify-center rounded-lg",
+                      canRemove
+                        ? "text-neutral-600 active:bg-neutral-100"
+                        : "cursor-not-allowed opacity-30",
+                    )}
+                  >
+                    <X className="size-5" strokeWidth={1.75} />
+                  </button>
+                </div>
               </div>
               <div className="mt-1 pr-6">
                 <MealCardContent meal={meal} isSwapping={isSwapping} />
               </div>
-              <div className="mt-4 flex justify-end border-t border-neutral-100 pt-3">
+              <div
+                className="mt-4 flex justify-end border-t border-neutral-100 pt-3"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   type="button"
                   disabled={isSwapping}
-                  onClick={() => onSwap(index)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSwap(index);
+                  }}
                   className="text-sm font-medium text-black underline decoration-neutral-400 decoration-1 underline-offset-4 disabled:opacity-50"
                 >
                   {isSwapping ? (
@@ -223,6 +253,18 @@ export function MealReviewScreen({
           </span>
         </Button>
       </div>
+
+      <RecipeSheet
+        open={selectedMealIndex !== null}
+        onClose={() => setSelectedMealIndex(null)}
+        meal={
+          selectedMealIndex !== null
+            ? meals[selectedMealIndex]!
+            : meals[0]!
+        }
+        mealIndex={selectedMealIndex ?? 0}
+        recipe={undefined}
+      />
     </div>
   );
 }

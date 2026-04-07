@@ -1,4 +1,4 @@
-import type { MealPlan } from "@/lib/ai/schemas";
+import type { MealPlan, Recipe } from "@/lib/ai/schemas";
 
 import type { ConsolidatedIngredient } from "./consolidate";
 
@@ -7,9 +7,12 @@ export type ShoppingList = {
     day: string;
     dish: string;
     description: string;
+    cuisine: string;
     cookTimeMin: number;
     costAud: number;
   }[];
+  /** Same order as `meals` — `meals[i]` ↔ `recipes[i]`. */
+  recipes: Recipe[];
   sections: { label: string; items: { name: string; quantity: string }[] }[];
   totalEstimatedCostAud: number;
   planningNotes: string;
@@ -37,6 +40,7 @@ function formatItemQuantity(quantity: number, unit: string): string {
 export function formatShoppingList(
   consolidated: ConsolidatedIngredient[],
   plan: MealPlan,
+  recipes: Recipe[],
 ): ShoppingList {
   const byCategory = new Map<
     ConsolidatedIngredient["category"],
@@ -77,9 +81,11 @@ export function formatShoppingList(
       day: m.day,
       dish: m.dishName,
       description: m.briefDescription,
+      cuisine: m.cuisine,
       cookTimeMin: m.estimatedCookTimeMin,
       costAud: m.estimatedCostAud,
     })),
+    recipes,
     sections,
     totalEstimatedCostAud,
     planningNotes: plan.planningNotes,

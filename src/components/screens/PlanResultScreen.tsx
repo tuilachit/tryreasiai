@@ -1,12 +1,15 @@
 "use client";
 
 import { ArrowLeft, Check, Share2 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 
+import { RecipeSheet } from "@/components/RecipeSheet";
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
+import type { MealSlot } from "@/lib/ai/schemas";
 import {
-  formatMealSummaryLine,
+  abbrevDay,
   formatShoppingListPlainText,
+  truncateDish,
 } from "@/lib/shoppingListText";
 import { cn } from "@/lib/utils";
 
@@ -28,8 +31,33 @@ export function PlanResultScreen({
   onBack,
 }: PlanResultScreenProps) {
   const [copied, setCopied] = useState(false);
+  const [sheetMealIndex, setSheetMealIndex] = useState<number | null>(null);
+  const [stepsCache, setStepsCache] = useState<Map<number, string[]>>(
+    () => new Map(),
+  );
 
-  const mealLine = useMemo(() => formatMealSummaryLine(list.meals), [list.meals]);
+  const onStepsLoaded = useCallback((mealIndex: number, steps: string[]) => {
+    setStepsCache((prev) => {
+      const next = new Map(prev);
+      next.set(mealIndex, steps);
+      return next;
+    });
+  }, []);
+
+  const mealSlotAt = useCallback(
+    (i: number): MealSlot => {
+      const m = list.meals[i]!;
+      return {
+        day: m.day,
+        dishName: m.dish,
+        briefDescription: m.description,
+        cuisine: m.cuisine,
+        estimatedCostAud: m.costAud,
+        estimatedCookTimeMin: m.cookTimeMin,
+      };
+    },
+    [list.meals],
+  );
 
   const totalItems = useMemo(
     () => list.sections.reduce((n, s) => n + s.items.length, 0),
@@ -80,7 +108,25 @@ export function PlanResultScreen({
       </header>
 
       <div className="px-4 pt-1">
-        <p className="text-xs leading-relaxed text-neutral-500">{mealLine}</p>
+        <p className="flex flex-wrap items-baseline gap-x-1 gap-y-1 text-xs leading-relaxed">
+          {list.meals.map((m, i) => (
+            <Fragment key={i}>
+              {i > 0 ? (
+                <span className="text-neutral-400" aria-hidden>
+                  ·
+                </span>
+              ) : null}
+              <span className="text-neutral-500">{abbrevDay(m.day)} </span>
+              <button
+                type="button"
+                onClick={() => setSheetMealIndex(i)}
+                className="text-neutral-600 underline decoration-neutral-300 decoration-1 underline-offset-2 transition-colors hover:text-black"
+              >
+                {truncateDish(m.dish)}
+              </button>
+            </Fragment>
+          ))}
+        </p>
         <div className="mt-4 flex items-baseline justify-between gap-2 border-b border-neutral-200 pb-3">
           <span className="text-sm text-neutral-500">Estimated total</span>
           <span className="text-lg font-medium tabular-nums">
@@ -159,6 +205,28 @@ export function PlanResultScreen({
           Copied
         </div>
       ) : null}
+
+      <RecipeSheet
+        open={sheetMealIndex !== null}
+        onClose={() => setSheetMealIndex(null)}
+        meal={
+          sheetMealIndex !== null
+            ? mealSlotAt(sheetMealIndex)
+            : mealSlotAt(0)
+        }
+        mealIndex={sheetMealIndex ?? 0}
+        recipe={
+          sheetMealIndex !== null
+            ? list.recipes[sheetMealIndex]
+            : undefined
+        }
+        cachedSteps={
+          sheetMealIndex !== null
+            ? stepsCache.get(sheetMealIndex)
+            : undefined
+        }
+        onStepsLoaded={onStepsLoaded}
+      />
     </div>
   );
 }

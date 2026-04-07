@@ -57,3 +57,9 @@ export const recipeSchema = z.object({
 
 export type Ingredient = z.infer<typeof ingredientSchema>;
 export type Recipe = z.infer<typeof recipeSchema>;
+
+export const recipeStepsSchema = z.object({
+  steps: z.array(z.string()).min(3).max(12),
+});
+
+export type RecipeSteps = z.infer<typeof recipeStepsSchema>;

@@ -10,6 +10,7 @@ import { formatShoppingList, type ShoppingList } from "@/lib/pipeline/formatShop
 import {
   mealPlanSchema,
   recipeSchema,
+  recipeStepsSchema,
   singleMealSchema,
   type MealPlan,
   type MealSlot,
@@ -49,6 +50,17 @@ Portion guidance for staples (per person, per meal):
 - Meat/fish/tofu: 150-180 g per person
 
 Do NOT include water in the ingredients list — assume the user has tap water.`;
+
+const RECIPE_STEPS_SYSTEM_PROMPT = `You are a recipe instructor. Convert a brief recipe description and ingredients list into a clear set of numbered cooking steps.
+
+Rules:
+- Output between 3 and 12 steps. Most home recipes are 4-8 steps.
+- Each step is one clear action a home cook can follow.
+- Use METRIC measurements consistent with the ingredients list.
+- Mention specific ingredients by name where it matters (e.g. "Add the soy sauce and rice wine").
+- Include cook times where relevant (e.g. "Stir-fry for 3-4 minutes until golden").
+- Do NOT number the steps yourself — return them as plain strings, the UI will add numbering.
+- Do NOT include greetings, summaries, or commentary. Only the steps.`;
 
 const SWAP_MEAL_SYSTEM_PROMPT = `You are a meal planner replacing a single meal in an existing weekly plan. Generate ONE new meal that:
 
@@ -156,7 +168,7 @@ export async function buildShoppingList(
   );
 
   const consolidated = consolidateIngredients(recipes);
-  return formatShoppingList(consolidated, plan);
+  return formatShoppingList(consolidated, plan, recipes);
 }
 
 export async function expandRecipe(
@@ -176,6 +188,28 @@ Servings needed: ${servings}`,
   return object;
 }
 
+export async function expandRecipeSteps(
+  meal: MealSlot,
+  recipe: Recipe,
+): Promise<string[]> {
+  const { object } = await generateObject({
+    model: openai("gpt-4o-mini"),
+    schema: recipeStepsSchema,
+    system: RECIPE_STEPS_SYSTEM_PROMPT,
+    prompt: `Dish name: ${meal.dishName}
+Brief description: ${meal.briefDescription}
+Cuisine: ${meal.cuisine}
+
+Existing brief instructions (paragraph):
+${recipe.instructionsBrief}
+
+Ingredients (JSON):
+${JSON.stringify(recipe.ingredients, null, 2)}`,
+  });
+
+  return object.steps;
+}
+
 export async function planWeek(
   profile: UserProfile,
   weeklyInput: string,
@@ -188,5 +222,5 @@ export async function planWeek(
   );
 
   const consolidated = consolidateIngredients(recipes);
-  return formatShoppingList(consolidated, plan);
+  return formatShoppingList(consolidated, plan, recipes);
 }

@@ -1,6 +1,6 @@
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
 
-function abbrevDay(raw: string): string {
+export function abbrevDay(raw: string): string {
   const s = raw.trim().toLowerCase();
   if (s.startsWith("mon")) return "Mon";
   if (s.startsWith("tue")) return "Tue";
@@ -12,7 +12,7 @@ function abbrevDay(raw: string): string {
   return raw.trim().slice(0, 3);
 }
 
-function truncateDish(name: string, max = 22): string {
+export function truncateDish(name: string, max = 22): string {
   const t = name.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max - 1)}…`;
