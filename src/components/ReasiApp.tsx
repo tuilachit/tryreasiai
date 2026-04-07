@@ -26,6 +26,7 @@ import { OnboardingHouseholdScreen } from "./screens/OnboardingHouseholdScreen";
 import { PlanInputScreen } from "./screens/PlanInputScreen";
 import { PlanLoadingScreen } from "./screens/PlanLoadingScreen";
 import { PlanResultScreen } from "./screens/PlanResultScreen";
+import { RecipesScreen } from "./screens/RecipesScreen";
 
 /**
  * Main flow steps. `profile_edit` is reserved: edits replay `onboarding_1`…`onboarding_5`
@@ -43,6 +44,7 @@ export type AppStep =
   | "meal_review"
   | "list_building"
   | "plan_result"
+  | "recipes"
   | "profile_edit";
 
 type HistoryPayload = {
@@ -85,6 +87,9 @@ export function ReasiApp() {
   const [listBuildError, setListBuildError] = useState<string | null>(null);
   const [shoppingList, setShoppingList] = useState<ShoppingList | null>(null);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(() => new Set());
+  const [stepsCache, setStepsCache] = useState<Map<number, string[]>>(
+    () => new Map(),
+  );
 
   const [swappingIndex, setSwappingIndex] = useState<number | null>(null);
   const [addingMeal, setAddingMeal] = useState(false);
@@ -377,6 +382,7 @@ export function ReasiApp() {
     try {
       const list = await buildShoppingList(profile, reviewMeals);
       if (listBuildGenRef.current !== id) return;
+      setStepsCache(new Map());
       setShoppingList(list);
       setCheckedItems(new Set());
       replaceStep("plan_result");
@@ -395,6 +401,23 @@ export function ReasiApp() {
       return next;
     });
   }, []);
+
+  const onRecipeStepsLoaded = useCallback(
+    (mealIndex: number, steps: string[]) => {
+      setStepsCache((prev) => {
+        const next = new Map(prev);
+        next.set(mealIndex, steps);
+        return next;
+      });
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (step === "recipes" && !shoppingList) {
+      window.history.back();
+    }
+  }, [step, shoppingList]);
 
   if (!mounted) {
     return (
@@ -539,6 +562,7 @@ export function ReasiApp() {
           checked={checkedItems}
           onToggleItem={toggleItemChecked}
           onBack={goBack}
+          onViewRecipes={() => pushStep("recipes")}
         />
       );
     }
@@ -577,6 +601,22 @@ export function ReasiApp() {
         />
       );
     }
+  }
+
+  if (step === "recipes") {
+    if (!shoppingList) {
+      return (
+        <div className="mx-auto min-h-svh w-full max-w-[480px] bg-white" />
+      );
+    }
+    return (
+      <RecipesScreen
+        shoppingList={shoppingList}
+        onBack={goBack}
+        stepsCache={stepsCache}
+        onStepsLoaded={onRecipeStepsLoaded}
+      />
+    );
   }
 
   return (
