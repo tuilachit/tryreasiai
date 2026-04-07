@@ -67,7 +67,14 @@ export function normalizeIngredientKey(
 }
 
 function groupKey(normalizedName: string, unit: string): string {
-  return `${normalizedName}\0${unit}`;
+  return `${normalizedName}__${unit}`;
+}
+
+/** Stable id for a consolidated row — matches dedupe grouping in `consolidateIngredients`. */
+export function consolidatedIngredientExclusionKey(
+  ing: ConsolidatedIngredient,
+): string {
+  return `${ing.name}__${ing.unit}`;
 }
 
 export function consolidateIngredients(

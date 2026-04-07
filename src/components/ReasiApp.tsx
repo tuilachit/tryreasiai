@@ -4,14 +4,16 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   addMeal,
-  buildShoppingList,
+  expandMealsToIngredients,
+  formatFinalShoppingList,
   generateMealPlan,
   swapMeal,
 } from "@/lib/ai/actions";
-import type { MealSlot } from "@/lib/ai/schemas";
+import type { MealSlot, Recipe } from "@/lib/ai/schemas";
 import { BUDGET_OPTIONS } from "@/lib/onboardingOptions";
 import { nextUnusedWeekday } from "@/lib/mealWeekday";
 import { summarizeProfile } from "@/lib/profileSummary";
+import type { ConsolidatedIngredient } from "@/lib/pipeline/consolidate";
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { UserProfile } from "@/lib/types";
@@ -24,7 +26,11 @@ import { OnboardingCuisinesScreen } from "./screens/OnboardingCuisinesScreen";
 import { OnboardingDietaryScreen } from "./screens/OnboardingDietaryScreen";
 import { OnboardingHouseholdScreen } from "./screens/OnboardingHouseholdScreen";
 import { PlanInputScreen } from "./screens/PlanInputScreen";
-import { PlanLoadingScreen } from "./screens/PlanLoadingScreen";
+import {
+  PlanLoadingScreen,
+  type ListBuildLoadingPhase,
+} from "./screens/PlanLoadingScreen";
+import { PantryCheckScreen } from "./screens/PantryCheckScreen";
 import { PlanResultScreen } from "./screens/PlanResultScreen";
 import { RecipesScreen } from "./screens/RecipesScreen";
 
@@ -42,6 +48,7 @@ export type AppStep =
   | "plan_input"
   | "plan_generating"
   | "meal_review"
+  | "pantry_check"
   | "list_building"
   | "plan_result"
   | "recipes"
@@ -90,6 +97,13 @@ export function ReasiApp() {
   const [stepsCache, setStepsCache] = useState<Map<number, string[]>>(
     () => new Map(),
   );
+
+  const [pantryPreview, setPantryPreview] = useState<{
+    recipes: Recipe[];
+    consolidatedIngredients: ConsolidatedIngredient[];
+  } | null>(null);
+  const [listBuildPhase, setListBuildPhase] =
+    useState<ListBuildLoadingPhase>("expanding");
 
   const [swappingIndex, setSwappingIndex] = useState<number | null>(null);
   const [addingMeal, setAddingMeal] = useState(false);
@@ -378,20 +392,52 @@ export function ReasiApp() {
     if (!profile || reviewMeals.length === 0) return;
     setListBuildError(null);
     const id = ++listBuildGenRef.current;
+    setListBuildPhase("expanding");
     pushStep("list_building");
     try {
-      const list = await buildShoppingList(profile, reviewMeals);
+      const preview = await expandMealsToIngredients(profile, reviewMeals);
       if (listBuildGenRef.current !== id) return;
-      setStepsCache(new Map());
-      setShoppingList(list);
-      setCheckedItems(new Set());
-      replaceStep("plan_result");
+      setPantryPreview(preview);
+      replaceStep("pantry_check");
     } catch {
       if (listBuildGenRef.current !== id) return;
       setListBuildError("Something went wrong. Please try again.");
       window.history.back();
     }
   }, [pushStep, replaceStep, reviewMeals, savedProfile]);
+
+  const runFormatList = useCallback(
+    async (excludedKeys: string[]) => {
+      const profile = savedProfile ?? loadProfile();
+      if (!profile || reviewMeals.length === 0) return;
+      const preview = pantryPreview;
+      if (!preview) return;
+      setListBuildError(null);
+      const id = ++listBuildGenRef.current;
+      setListBuildPhase("formatting");
+      replaceStep("list_building");
+      try {
+        const list = await formatFinalShoppingList(
+          profile,
+          reviewMeals,
+          preview.recipes,
+          preview.consolidatedIngredients,
+          excludedKeys,
+        );
+        if (listBuildGenRef.current !== id) return;
+        setStepsCache(new Map());
+        setShoppingList(list);
+        setCheckedItems(new Set());
+        setPantryPreview(null);
+        replaceStep("plan_result");
+      } catch {
+        if (listBuildGenRef.current !== id) return;
+        setListBuildError("Something went wrong. Please try again.");
+        window.history.back();
+      }
+    },
+    [pantryPreview, replaceStep, reviewMeals, savedProfile],
+  );
 
   const toggleItemChecked = useCallback((key: string) => {
     setCheckedItems((prev) => {
@@ -418,6 +464,11 @@ export function ReasiApp() {
       window.history.back();
     }
   }, [step, shoppingList]);
+
+  useEffect(() => {
+    if (step !== "pantry_check" || pantryPreview) return;
+    window.history.back();
+  }, [step, pantryPreview]);
 
   if (!mounted) {
     return (
@@ -550,8 +601,24 @@ export function ReasiApp() {
     );
   }
 
+  if (step === "pantry_check" && pantryPreview) {
+    return (
+      <PantryCheckScreen
+        consolidatedIngredients={pantryPreview.consolidatedIngredients}
+        onContinue={(keys) => void runFormatList(keys)}
+        onSkip={() => void runFormatList([])}
+        onBack={goBack}
+      />
+    );
+  }
+
   if (step === "list_building") {
-    return <PlanLoadingScreen variant="list_building" />;
+    return (
+      <PlanLoadingScreen
+        variant="list_building"
+        listBuildPhase={listBuildPhase}
+      />
+    );
   }
 
   if (step === "plan_result") {

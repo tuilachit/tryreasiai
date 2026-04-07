@@ -5,7 +5,11 @@ import "server-only";
 import { generateObject } from "ai";
 
 import { openai } from "@/lib/ai/client";
-import { consolidateIngredients } from "@/lib/pipeline/consolidate";
+import {
+  consolidateIngredients,
+  consolidatedIngredientExclusionKey,
+  type ConsolidatedIngredient,
+} from "@/lib/pipeline/consolidate";
 import { formatShoppingList, type ShoppingList } from "@/lib/pipeline/formatShoppingList";
 import {
   mealPlanSchema,
@@ -153,22 +157,52 @@ ${JSON.stringify(existingMeals, null, 2)}`,
   return { ...object, day: targetDay };
 }
 
-export async function buildShoppingList(
+export async function expandMealsToIngredients(
   profile: UserProfile,
   meals: MealSlot[],
+): Promise<{
+  recipes: Recipe[];
+  consolidatedIngredients: ConsolidatedIngredient[];
+}> {
+  const servings = profile.householdSize;
+  const recipes = await Promise.all(
+    meals.map((meal) => expandRecipe(meal, servings)),
+  );
+  const consolidatedIngredients = consolidateIngredients(recipes);
+  return { recipes, consolidatedIngredients };
+}
+
+export async function formatFinalShoppingList(
+  _profile: UserProfile,
+  meals: MealSlot[],
+  recipes: Recipe[],
+  consolidatedIngredients: ConsolidatedIngredient[],
+  excludedIngredientKeys: string[],
 ): Promise<ShoppingList> {
+  const excluded = new Set(excludedIngredientKeys);
+  const filtered = consolidatedIngredients.filter(
+    (ing) => !excluded.has(consolidatedIngredientExclusionKey(ing)),
+  );
   const plan: MealPlan = {
     meals,
     planningNotes: "User-confirmed plan.",
   };
-  const servings = profile.householdSize;
+  return formatShoppingList(filtered, plan, recipes);
+}
 
-  const recipes = await Promise.all(
-    meals.map((meal) => expandRecipe(meal, servings)),
+export async function buildShoppingList(
+  profile: UserProfile,
+  meals: MealSlot[],
+): Promise<ShoppingList> {
+  const { recipes, consolidatedIngredients } =
+    await expandMealsToIngredients(profile, meals);
+  return formatFinalShoppingList(
+    profile,
+    meals,
+    recipes,
+    consolidatedIngredients,
+    [],
   );
-
-  const consolidated = consolidateIngredients(recipes);
-  return formatShoppingList(consolidated, plan, recipes);
 }
 
 export async function expandRecipe(
