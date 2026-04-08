@@ -5,6 +5,7 @@ import { ArrowLeft, ChevronRight } from "lucide-react";
 
 import { RecipeSheet } from "@/components/RecipeSheet";
 import type { MealSlot } from "@/lib/ai/schemas";
+import { formatMealMacrosEstimateLine } from "@/lib/mealMacros";
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
 import { cn } from "@/lib/utils";
 
@@ -43,6 +44,9 @@ function mealSlotAt(list: ShoppingList, i: number): MealSlot {
     cuisine: m.cuisine,
     estimatedCostAud: m.costAud,
     estimatedCookTimeMin: m.cookTimeMin,
+    estimatedProteinG: m.estimatedProteinG ?? Number.NaN,
+    estimatedCalories: m.estimatedCalories ?? Number.NaN,
+    estimatedCarbsG: m.estimatedCarbsG ?? Number.NaN,
   };
 }
 
@@ -138,6 +142,7 @@ export function RecipesScreen({
             <div className="space-y-3">
               {group.mealIndices.map((mealIndex) => {
                 const meal = shoppingList.meals[mealIndex]!;
+                const macroLine = formatMealMacrosEstimateLine(meal);
                 return (
                   <button
                     key={mealIndex}
@@ -163,6 +168,9 @@ export function RecipesScreen({
                           {meal.cuisine}
                         </span>
                       </div>
+                      {macroLine ? (
+                        <p className="mt-2 text-xs text-neutral-500">{macroLine}</p>
+                      ) : null}
                     </div>
                     <ChevronRight
                       className="mt-1 size-5 shrink-0 text-neutral-400"

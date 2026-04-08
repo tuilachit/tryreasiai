@@ -7,6 +7,9 @@ export const mealSlotSchema = z.object({
   cuisine: z.string(),
   estimatedCostAud: z.number(),
   estimatedCookTimeMin: z.number(),
+  estimatedProteinG: z.number(),
+  estimatedCalories: z.number(),
+  estimatedCarbsG: z.number(),
 });
 
 /** Same shape as a plan row; used for single-meal LLM outputs. */

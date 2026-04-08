@@ -22,6 +22,14 @@ import {
 } from "@/lib/ai/schemas";
 import type { UserProfile } from "@/lib/types";
 
+const MEAL_MACRO_GUIDANCE = `
+
+Macro estimates:
+- For each meal, include rough estimated macros per serving: protein in grams, total calories, carbohydrates in grams.
+- Estimates should be reasonable for typical home-cooked recipes — chicken stir-fry over rice for one person is roughly 35-45g protein, 550-700 kcal, 60-80g carbs.
+- Estimate based on 1 serving (per person), not the whole meal.
+- These are rough estimates for display purposes, not precise nutritional analysis.`;
+
 const SYSTEM_PROMPT = `You are an expert meal planner. Build a meal plan that:
 
 1. Matches dietary preferences, budget, cuisines, and cooking time from the profile.
@@ -31,7 +39,7 @@ const SYSTEM_PROMPT = `You are an expert meal planner. Build a meal plan that:
 5. Defaults to 5 dinners unless the user specifies otherwise.
 
 Output meal slots only (day, dish name, brief description, cuisine, cost estimate in AUD, cook time in minutes).
-Do NOT output full recipes — that's a later step.`;
+Do NOT output full recipes — that's a later step.${MEAL_MACRO_GUIDANCE}`;
 
 const RECIPE_SYSTEM_PROMPT = `You are a recipe generator. Output a clean ingredients list with PRECISE quantities scaled to the given servings.
 
@@ -74,7 +82,7 @@ const SWAP_MEAL_SYSTEM_PROMPT = `You are a meal planner replacing a single meal 
 4. Keeps the same day-of-week slot as the meal being replaced.
 5. Uses realistic AUD pricing for Sydney supermarkets.
 
-Output a single meal slot only. Be specific and on-cuisine — avoid generic names like "Asian chicken stir-fry".`;
+Output a single meal slot only. Be specific and on-cuisine — avoid generic names like "Asian chicken stir-fry".${MEAL_MACRO_GUIDANCE}`;
 
 const ADD_MEAL_SYSTEM_PROMPT = `You are a meal planner adding one meal to an existing weekly plan. Generate ONE new meal that:
 
@@ -83,7 +91,7 @@ const ADD_MEAL_SYSTEM_PROMPT = `You are a meal planner adding one meal to an exi
 3. Uses the exact day string given in the user message for the "day" field.
 4. Uses realistic AUD pricing for Sydney supermarkets.
 
-Output a single meal slot only. Be specific and on-cuisine — avoid generic names like "Asian chicken stir-fry".`;
+Output a single meal slot only. Be specific and on-cuisine — avoid generic names like "Asian chicken stir-fry".${MEAL_MACRO_GUIDANCE}`;
 
 export async function generateMealPlan(
   profile: UserProfile,

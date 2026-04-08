@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronRight, X } from "lucide-react";
 import { RecipeSheet } from "@/components/RecipeSheet";
 import { Button } from "@/components/ui/button";
 import type { MealSlot } from "@/lib/ai/schemas";
+import { formatMealMacrosEstimateLine } from "@/lib/mealMacros";
 import { dayShortLabel } from "@/lib/mealWeekday";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ function MealCardContent({
 }) {
   const [opacity, setOpacity] = useState(1);
   const prevSig = useRef<string | null>(null);
-  const sig = `${meal.dishName}|${meal.briefDescription}|${meal.estimatedCostAud}|${meal.cuisine}|${meal.estimatedCookTimeMin}`;
+  const sig = `${meal.dishName}|${meal.briefDescription}|${meal.estimatedCostAud}|${meal.cuisine}|${meal.estimatedCookTimeMin}|${meal.estimatedProteinG}|${meal.estimatedCalories}|${meal.estimatedCarbsG}`;
 
   useEffect(() => {
     if (prevSig.current === null) {
@@ -39,6 +40,8 @@ function MealCardContent({
       });
     });
   }, [sig]);
+
+  const macroLine = formatMealMacrosEstimateLine(meal);
 
   return (
     <div
@@ -62,6 +65,9 @@ function MealCardContent({
           {meal.cuisine}
         </span>
       </div>
+      {macroLine ? (
+        <p className="mt-2 text-xs text-neutral-500">{macroLine}</p>
+      ) : null}
     </div>
   );
 }

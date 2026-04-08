@@ -10,6 +10,10 @@ export type ShoppingList = {
     cuisine: string;
     cookTimeMin: number;
     costAud: number;
+    /** Present for plans generated after macro fields were added; may be absent for older in-memory plans. */
+    estimatedProteinG?: number;
+    estimatedCalories?: number;
+    estimatedCarbsG?: number;
   }[];
   /** Same order as `meals` — `meals[i]` ↔ `recipes[i]`. */
   recipes: Recipe[];
@@ -84,6 +88,9 @@ export function formatShoppingList(
       cuisine: m.cuisine,
       cookTimeMin: m.estimatedCookTimeMin,
       costAud: m.estimatedCostAud,
+      estimatedProteinG: m.estimatedProteinG,
+      estimatedCalories: m.estimatedCalories,
+      estimatedCarbsG: m.estimatedCarbsG,
     })),
     recipes,
     sections,

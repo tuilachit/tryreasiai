@@ -4,6 +4,7 @@ import { ArrowLeft, Check, ChevronRight, Share2 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
+import { weeklyMacrosRollup } from "@/lib/mealMacros";
 import { formatMealSummaryLine, formatShoppingListPlainText } from "@/lib/shoppingListText";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,11 @@ export function PlanResultScreen({
 
   const checkedCount = checked.size;
 
+  const macrosRollup = useMemo(
+    () => weeklyMacrosRollup(list.meals),
+    [list.meals],
+  );
+
   const runShare = useCallback(async () => {
     const text = formatShoppingListPlainText(list);
     if (typeof navigator !== "undefined" && navigator.share) {
@@ -60,7 +66,7 @@ export function PlanResultScreen({
   }, [list]);
 
   return (
-    <div className="mx-auto flex min-h-svh w-full max-w-[420px] flex-col bg-white pb-24 text-black">
+    <div className="mx-auto flex min-h-svh w-full max-w-[420px] flex-col bg-white pb-44 text-black">
       <header className="flex shrink-0 items-center justify-between px-2 pt-3 pb-2">
         <button
           type="button"
@@ -89,6 +95,17 @@ export function PlanResultScreen({
             ${list.totalEstimatedCostAud.toFixed(2)}
           </span>
         </div>
+        {macrosRollup.ok ? (
+          <>
+            <p className="mt-2 text-sm text-neutral-500">{macrosRollup.line}</p>
+            <p className="mt-1 text-xs italic text-neutral-400">
+              Macro estimates are rough — for precise tracking, use a dedicated
+              nutrition app.
+            </p>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-neutral-500">{macrosRollup.message}</p>
+        )}
       </div>
 
       <div className="mt-6 flex flex-1 flex-col gap-8 px-4">
@@ -143,29 +160,31 @@ export function PlanResultScreen({
         ))}
       </div>
 
-      <div className="fixed bottom-0 left-1/2 z-10 grid w-full max-w-[420px] -translate-x-1/2 grid-cols-3 items-center gap-1 border-t border-neutral-200 bg-white px-3 py-3 text-xs sm:text-sm">
-        <span className="min-w-0 truncate text-neutral-600">
-          {checkedCount} of {totalItems} checked
-        </span>
+      <div className="fixed bottom-0 left-1/2 z-10 flex w-full max-w-[420px] -translate-x-1/2 flex-col gap-3 border-t border-neutral-200 bg-white px-4 py-4">
+        <div className="flex items-center justify-between gap-2 text-sm text-neutral-600">
+          <span className="min-w-0 truncate">
+            {checkedCount} of {totalItems} checked
+          </span>
+          <button
+            type="button"
+            onClick={() => void runShare()}
+            className="shrink-0 font-medium text-neutral-600 underline-offset-2 hover:underline"
+          >
+            Share list
+          </button>
+        </div>
         <button
           type="button"
           onClick={onViewRecipes}
-          className="flex min-w-0 items-center justify-center gap-0.5 font-medium text-neutral-900"
+          className="flex w-full items-center justify-center gap-1 rounded-lg bg-black py-4 text-base font-medium text-white hover:bg-neutral-800"
         >
-          <span>Recipes</span>
-          <ChevronRight className="size-4 shrink-0" strokeWidth={2} aria-hidden />
-        </button>
-        <button
-          type="button"
-          onClick={() => void runShare()}
-          className="min-w-0 justify-self-end truncate text-left font-medium text-neutral-600 underline-offset-2 hover:underline"
-        >
-          Share list
+          <span>View recipes</span>
+          <ChevronRight className="size-5 shrink-0" strokeWidth={2} aria-hidden />
         </button>
       </div>
 
       {copied ? (
-        <div className="fixed bottom-20 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-black px-4 py-2 text-sm text-white shadow-md">
+        <div className="fixed bottom-36 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-black px-4 py-2 text-sm text-white shadow-md">
           Copied
         </div>
       ) : null}

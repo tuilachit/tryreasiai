@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 
 import { expandRecipeSteps } from "@/lib/ai/actions";
 import type { Ingredient, MealSlot, Recipe } from "@/lib/ai/schemas";
+import { formatMealMacrosEstimateLine } from "@/lib/mealMacros";
 import { cn } from "@/lib/utils";
 
 function formatIngredientQuantity(quantity: number, unit: string): string {
@@ -46,7 +47,15 @@ export function RecipeSheet({
     setLoadingSteps(true);
     setStepsError(null);
     try {
-      const steps = await expandRecipeSteps(meal, recipe);
+      const steps = await expandRecipeSteps(
+        {
+          ...meal,
+          estimatedProteinG: meal.estimatedProteinG ?? 0,
+          estimatedCalories: meal.estimatedCalories ?? 0,
+          estimatedCarbsG: meal.estimatedCarbsG ?? 0,
+        },
+        recipe,
+      );
       onStepsLoaded(mealIndex, steps);
     } catch {
       setStepsError("Couldn't load instructions. Tap to retry.");
@@ -54,6 +63,8 @@ export function RecipeSheet({
       setLoadingSteps(false);
     }
   }, [meal, mealIndex, onStepsLoaded, recipe]);
+
+  const macroLine = formatMealMacrosEstimateLine(meal);
 
   useLayoutEffect(() => {
     if (!open || !recipe || !onStepsLoaded) return;
@@ -162,6 +173,9 @@ export function RecipeSheet({
               {meal.cuisine}
             </span>
           </div>
+          {macroLine ? (
+            <p className="mt-2 text-xs text-neutral-500">{macroLine}</p>
+          ) : null}
 
           <hr className="my-6 border-neutral-200" />
 
