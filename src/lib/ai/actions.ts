@@ -4,7 +4,7 @@ import "server-only";
 
 import { generateObject } from "ai";
 
-import { openai } from "@/lib/ai/client";
+import { openai, REASI_OPENAI_MODEL } from "@/lib/ai/client";
 import {
   consolidateIngredients,
   consolidatedIngredientExclusionKey,
@@ -140,7 +140,7 @@ export async function generateMealPlan(
 
   try {
     const { object } = await generateObject({
-      model: openai("gpt-4o-mini"),
+      model: openai(REASI_OPENAI_MODEL),
       schema: mealPlanSchema,
       system: SYSTEM_PROMPT,
       maxRetries: 2,
@@ -176,7 +176,7 @@ export async function swapMeal(
 ): Promise<MealSlot> {
   const p = normalizeUserProfile(profile);
   const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai(REASI_OPENAI_MODEL),
     schema: singleMealSchema,
     system: SWAP_MEAL_SYSTEM_PROMPT,
     maxRetries: 2,
@@ -204,7 +204,7 @@ export async function addMeal(
 ): Promise<MealSlot> {
   const p = normalizeUserProfile(profile);
   const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai(REASI_OPENAI_MODEL),
     schema: singleMealSchema,
     system: ADD_MEAL_SYSTEM_PROMPT,
     maxRetries: 2,
@@ -277,7 +277,7 @@ export async function expandRecipe(
   servings: number,
 ): Promise<Recipe> {
   const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai(REASI_OPENAI_MODEL),
     schema: recipeSchema,
     system: RECIPE_SYSTEM_PROMPT,
     maxRetries: 2,
@@ -295,7 +295,7 @@ export async function expandRecipeSteps(
   recipe: Recipe,
 ): Promise<string[]> {
   const { object } = await generateObject({
-    model: openai("gpt-4o-mini"),
+    model: openai(REASI_OPENAI_MODEL),
     schema: recipeStepsSchema,
     system: RECIPE_STEPS_SYSTEM_PROMPT,
     maxRetries: 2,
