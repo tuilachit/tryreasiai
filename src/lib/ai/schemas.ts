@@ -5,11 +5,12 @@ export const mealSlotSchema = z.object({
   dishName: z.string(),
   briefDescription: z.string(),
   cuisine: z.string(),
-  estimatedCostAud: z.number(),
-  estimatedCookTimeMin: z.number(),
-  estimatedProteinG: z.number(),
-  estimatedCalories: z.number(),
-  estimatedCarbsG: z.number(),
+  // Models often emit JSON numbers as strings; coerce keeps validation reliable.
+  estimatedCostAud: z.coerce.number(),
+  estimatedCookTimeMin: z.coerce.number(),
+  estimatedProteinG: z.coerce.number(),
+  estimatedCalories: z.coerce.number(),
+  estimatedCarbsG: z.coerce.number(),
 });
 
 /** Same shape as a plan row; used for single-meal LLM outputs. */
@@ -17,7 +18,7 @@ export const singleMealSchema = mealSlotSchema;
 
 export const mealPlanSchema = z.object({
   meals: z.array(mealSlotSchema),
-  planningNotes: z.string(),
+  planningNotes: z.string().default(""),
 });
 
 export type MealSlot = z.infer<typeof mealSlotSchema>;
@@ -46,14 +47,14 @@ export const ingredientUnitSchema = z.union([
 
 export const ingredientSchema = z.object({
   name: z.string(),
-  quantity: z.number(),
+  quantity: z.coerce.number(),
   unit: ingredientUnitSchema,
   category: ingredientCategorySchema,
 });
 
 export const recipeSchema = z.object({
   dishName: z.string(),
-  servings: z.number(),
+  servings: z.coerce.number(),
   ingredients: z.array(ingredientSchema),
   instructionsBrief: z.string(),
 });
