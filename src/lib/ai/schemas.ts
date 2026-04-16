@@ -18,7 +18,9 @@ export const singleMealSchema = mealSlotSchema;
 
 export const mealPlanSchema = z.object({
   meals: z.array(mealSlotSchema),
-  planningNotes: z.string().default(""),
+  // OpenAI strict structured output requires every property in `required`;
+  // .default() / .optional() omit keys from `required` and break the schema.
+  planningNotes: z.string(),
 });
 
 export type MealSlot = z.infer<typeof mealSlotSchema>;
