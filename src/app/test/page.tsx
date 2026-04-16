@@ -35,8 +35,12 @@ export default function TestMealPlanPage() {
     setError(null);
     setPlanResult(null);
     try {
-      const plan = await generateMealPlan(LUKE_PROFILE, weeklyInput);
-      setPlanResult(plan);
+      const result = await generateMealPlan(LUKE_PROFILE, weeklyInput);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setPlanResult(result.plan);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {

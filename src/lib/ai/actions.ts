@@ -22,6 +22,38 @@ import {
 } from "@/lib/ai/schemas";
 import type { UserProfile } from "@/lib/types";
 
+function normalizeUserProfile(profile: UserProfile): UserProfile {
+  const householdRaw = Number(profile.householdSize);
+  const budgetRaw = Number(profile.weeklyBudgetAud);
+  return {
+    ...profile,
+    householdSize:
+      Number.isFinite(householdRaw) && householdRaw >= 1
+        ? Math.round(householdRaw)
+        : 1,
+    weeklyBudgetAud:
+      Number.isFinite(budgetRaw) && budgetRaw >= 0 ? budgetRaw : 0,
+    dietaryStyle: Array.isArray(profile.dietaryStyle)
+      ? profile.dietaryStyle
+      : [],
+    restrictions: Array.isArray(profile.restrictions)
+      ? profile.restrictions
+      : [],
+    cuisinePreferences: Array.isArray(profile.cuisinePreferences)
+      ? profile.cuisinePreferences
+      : [],
+    cookingTimePreference:
+      typeof profile.cookingTimePreference === "string" &&
+      profile.cookingTimePreference.length > 0
+        ? profile.cookingTimePreference
+        : "20-40min",
+  };
+}
+
+export type GenerateMealPlanResult =
+  | { ok: true; plan: MealPlan }
+  | { ok: false; error: string };
+
 const MEAL_MACRO_GUIDANCE = `
 
 Macro estimates:
@@ -96,21 +128,44 @@ Output a single meal slot only. Be specific and on-cuisine — avoid generic nam
 export async function generateMealPlan(
   profile: UserProfile,
   weeklyInput: string,
-): Promise<MealPlan> {
-  const { object } = await generateObject({
-    model: openai("gpt-4o"),
-    schema: mealPlanSchema,
-    system: SYSTEM_PROMPT,
-    prompt: `Profile (JSON):
-${JSON.stringify(profile, null, 2)}
+): Promise<GenerateMealPlanResult> {
+  const p = normalizeUserProfile(profile);
+
+  if (!process.env.OPENAI_API_KEY?.trim()) {
+    return {
+      ok: false,
+      error: "OPENAI_API_KEY is not set on the server.",
+    };
+  }
+
+  try {
+    const { object } = await generateObject({
+      model: openai("gpt-4o-mini"),
+      schema: mealPlanSchema,
+      system: SYSTEM_PROMPT,
+      maxRetries: 2,
+      prompt: `Profile (JSON):
+${JSON.stringify(p, null, 2)}
 
 Weekly request:
 ${weeklyInput}
 
 Include your planning reasoning in planningNotes.`,
-  });
+    });
 
-  return object;
+    if (!object?.meals?.length) {
+      return {
+        ok: false,
+        error: "Planner returned no meals.",
+      };
+    }
+
+    return { ok: true, plan: object };
+  } catch (e) {
+    console.error("[generateMealPlan]", e);
+    const msg = e instanceof Error ? e.message : String(e);
+    return { ok: false, error: msg };
+  }
 }
 
 export async function swapMeal(
@@ -119,12 +174,14 @@ export async function swapMeal(
   mealToSwap: MealSlot,
   otherMeals: MealSlot[],
 ): Promise<MealSlot> {
+  const p = normalizeUserProfile(profile);
   const { object } = await generateObject({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o-mini"),
     schema: singleMealSchema,
     system: SWAP_MEAL_SYSTEM_PROMPT,
+    maxRetries: 2,
     prompt: `Profile (JSON):
-${JSON.stringify(profile, null, 2)}
+${JSON.stringify(p, null, 2)}
 
 Weekly request:
 ${weeklyInput}
@@ -145,12 +202,14 @@ export async function addMeal(
   existingMeals: MealSlot[],
   targetDay: string,
 ): Promise<MealSlot> {
+  const p = normalizeUserProfile(profile);
   const { object } = await generateObject({
-    model: openai("gpt-4o"),
+    model: openai("gpt-4o-mini"),
     schema: singleMealSchema,
     system: ADD_MEAL_SYSTEM_PROMPT,
+    maxRetries: 2,
     prompt: `Profile (JSON):
-${JSON.stringify(profile, null, 2)}
+${JSON.stringify(p, null, 2)}
 
 Weekly request:
 ${weeklyInput}
@@ -172,7 +231,7 @@ export async function expandMealsToIngredients(
   recipes: Recipe[];
   consolidatedIngredients: ConsolidatedIngredient[];
 }> {
-  const servings = profile.householdSize;
+  const servings = normalizeUserProfile(profile).householdSize;
   const recipes = await Promise.all(
     meals.map((meal) => expandRecipe(meal, servings)),
   );
@@ -221,6 +280,7 @@ export async function expandRecipe(
     model: openai("gpt-4o-mini"),
     schema: recipeSchema,
     system: RECIPE_SYSTEM_PROMPT,
+    maxRetries: 2,
     prompt: `Dish name: ${meal.dishName}
 Brief description: ${meal.briefDescription}
 Cuisine: ${meal.cuisine}
@@ -238,6 +298,7 @@ export async function expandRecipeSteps(
     model: openai("gpt-4o-mini"),
     schema: recipeStepsSchema,
     system: RECIPE_STEPS_SYSTEM_PROMPT,
+    maxRetries: 2,
     prompt: `Dish name: ${meal.dishName}
 Brief description: ${meal.briefDescription}
 Cuisine: ${meal.cuisine}
@@ -256,8 +317,12 @@ export async function planWeek(
   profile: UserProfile,
   weeklyInput: string,
 ): Promise<ShoppingList> {
-  const plan = await generateMealPlan(profile, weeklyInput);
-  const servings = profile.householdSize;
+  const mealPlanResult = await generateMealPlan(profile, weeklyInput);
+  if (!mealPlanResult.ok) {
+    throw new Error(mealPlanResult.error);
+  }
+  const plan = mealPlanResult.plan;
+  const servings = normalizeUserProfile(profile).householdSize;
 
   const recipes = await Promise.all(
     plan.meals.map((meal) => expandRecipe(meal, servings)),

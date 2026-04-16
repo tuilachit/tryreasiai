@@ -15,6 +15,7 @@ import { nextUnusedWeekday } from "@/lib/mealWeekday";
 import { summarizeProfile } from "@/lib/profileSummary";
 import type { ConsolidatedIngredient } from "@/lib/pipeline/consolidate";
 import type { ShoppingList } from "@/lib/pipeline/formatShoppingList";
+import { userFacingMealPlanError } from "@/lib/planErrors";
 import { loadProfile, saveProfile } from "@/lib/storage";
 import type { UserProfile } from "@/lib/types";
 
@@ -307,9 +308,14 @@ export function ReasiApp() {
     const id = ++planGenRef.current;
     pushStep("plan_generating");
     try {
-      const plan = await generateMealPlan(profile, weeklyText);
+      const result = await generateMealPlan(profile, weeklyText);
       if (planGenRef.current !== id) return;
-      setReviewMeals(plan.meals);
+      if (!result.ok) {
+        setPlanError(userFacingMealPlanError(result.error));
+        window.history.back();
+        return;
+      }
+      setReviewMeals(result.plan.meals);
       replaceStep("meal_review");
     } catch {
       if (planGenRef.current !== id) return;
@@ -327,12 +333,18 @@ export function ReasiApp() {
     const id = ++planGenRef.current;
     pushStep("plan_generating");
     try {
-      const plan = await generateMealPlan(profile, weeklyText);
+      const result = await generateMealPlan(profile, weeklyText);
       if (planGenRef.current !== id) return;
-      setReviewMeals(plan.meals);
+      if (!result.ok) {
+        setPlanError(userFacingMealPlanError(result.error));
+        window.history.back();
+        return;
+      }
+      setReviewMeals(result.plan.meals);
       replaceStep("meal_review");
     } catch {
       if (planGenRef.current !== id) return;
+      setPlanError("Something went wrong. Please try again.");
       window.history.back();
     }
   }, [pushStep, replaceStep, savedProfile, weeklyText]);
